@@ -5,6 +5,7 @@ from openai import OpenAI
 import streamlit as st
 import logging
 import time
+import chatbot_eval as ce
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 openai_client = OpenAI()
@@ -30,13 +31,14 @@ def get_activity_thread(activity_id):
     if not activity_thread_exists:
         thread = openai_client.beta.threads.create()
         activity_thread.set({'thread_id': thread.id})
-        create_message("Hola!", thread.id, st.secrets["ASSISTANT_IDS"][activity_id])
+        create_message("Hola!", thread.id, activity_id)
 
     return activity_thread.get().get('thread_id')
 
 
 def get_messages(thread_id):
     # Get messages from thread
+
     messages = openai_client.beta.threads.messages.list(
          thread_id=thread_id,
          order="asc",
@@ -45,10 +47,14 @@ def get_messages(thread_id):
     
     clean_messages = []
     for message in messages.data[1:]:
-        clean_messages.append({
+        # print(message)
+        # print(message.content[0].text.annotations)
+        new_message = {
             "role": message.role if message.role == "user" else "model",
             "content": message.content[0].text.value
-        })
+        }
+        clean_messages.append(new_message)
+
 
     # Reassign roles to messages
     return clean_messages
@@ -87,5 +93,7 @@ def create_message(input_message, thread_id, assistant_id):
             thread_id=thread_id,
     )
     response_message = messages.data[0].content[0].text.value
+    # print("New message :")
+    # print(messages.data[0].content[0].text.annotations)
     logging.info(f'Response message: {response_message}')
     return response_message
